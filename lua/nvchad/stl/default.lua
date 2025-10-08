@@ -51,8 +51,19 @@ M.cwd = function()
   return (vim.o.columns > 85 and ("%#St_cwd_sep#" .. sep_l .. icon .. name)) or ""
 end
 
+-- RBG process status indicator
+M.rbg_status = function()
+  local process_name = (config and config.rbg_process_name) or vim.g.rbg_process_name or "remedybg.exe"
+  local is_running = utils.process_running(process_name)
+  local msg = " RBG Status :: " .. (is_running and "True " or "False ")
+  return "%#St_Lsp#" .. msg
+end
+
 M.cursor = "%#St_pos_sep#" .. sep_l .. "%#St_pos_icon# %#St_pos_text# %l:%v "
 M["%="] = "%="
+
+
+
 
 return function()
   return utils.generate("default", M)

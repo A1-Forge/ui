@@ -9,8 +9,8 @@ M.is_activewin = function()
 end
 
 local orders = {
-  default = { "mode", "file", "git", "%=", "lsp_msg", "%=", "diagnostics", "lsp", "cwd", "cursor" },
-  vscode = { "mode", "file", "git", "%=", "lsp_msg", "%=", "diagnostics", "lsp", "cursor", "cwd" },
+  default = { "mode", "file", "git", "%=", "lsp_msg", "%=", "diagnostics", "lsp", "cwd", "rbg_status", "cursor" },
+  vscode = { "mode", "file", "git", "%=", "lsp_msg", "%=", "diagnostics", "lsp", "rbg_status", "cursor", "cwd" },
 }
 
 M.generate = function(theme, modules)
@@ -153,7 +153,62 @@ M.separators = {
   arrow = { left = "", right = "" },
 }
 
-M.state = { lsp_msg = "" }
+M.state = { lsp_msg = "", process_cache = {} }
+
+-- Check if a process is running by its executable name.
+-- Cross-platform implementation using shell utilities:
+-- - Windows: tasklist /FI "IMAGENAME eq <name>"
+-- - Unix: pgrep -x <name>
+M.process_running = function(name)
+  if not name or name == "" then
+    return false
+  end
+
+  local uv = vim.uv or vim.loop
+  local cache = M.state.process_cache[name]
+  local now = (uv and uv.now and uv.now()) or 0
+
+  -- simple cache to avoid running external commands too frequently
+  if cache and cache.checked_at and (now - cache.checked_at) < 2000 then
+    return cache.result
+  end
+
+  local sysname = (uv and uv.os_uname and uv.os_uname().sysname) or ""
+  local running = false
+
+  if sysname == "Windows_NT" then
+    -- Use tasklist to filter by image name; parse Image Name line
+    local cmd = 'tasklist /FI "IMAGENAME eq ' .. name .. '" /FO LIST'
+    local ok, lines = pcall(vim.fn.systemlist, cmd)
+    if ok and type(lines) == "table" then
+      for _, line in ipairs(lines) do
+        if line:match('^Image Name:%s*' .. vim.pesc(name)) then
+          running = true
+          break
+        end
+      end
+    end
+
+    -- Fallback: some environments may expose only ProcessName (without .exe)
+    if not running then
+      local pname = name:gsub('%.exe$', '')
+      local ps_cmd = 'powershell -NoProfile -Command "Get-Process -Name ' .. pname .. ' -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { $_.Id }"'
+      local pok, plines = pcall(vim.fn.systemlist, ps_cmd)
+      if pok and type(plines) == "table" and #plines > 0 and plines[1] ~= "" then
+        running = true
+      end
+    end
+  else
+    -- Unix-like systems: pgrep returns PIDs when found
+    local ok, lines = pcall(vim.fn.systemlist, 'pgrep -x ' .. name)
+    if ok and type(lines) == "table" and #lines > 0 and lines[1] ~= "" then
+      running = true
+    end
+  end
+
+  M.state.process_cache[name] = { checked_at = now, result = running }
+  return running
+end
 
 local spinners = { "", "󰪞", "󰪟", "󰪠", "󰪡", "󰪢", "󰪣", "󰪤", "󰪥", "" }
 
