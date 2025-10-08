@@ -26,8 +26,14 @@ M.generate = function(theme, modules)
 
   for _, v in ipairs(order) do
     local module = modules[v]
-    module = type(module) == "string" and module or module()
-    table.insert(result, module)
+    if module then
+      if type(module) == "function" then
+        module = module()
+      elseif type(module) ~= "string" then
+        module = ""
+      end
+      table.insert(result, module)
+    end
   end
 
   return table.concat(result)

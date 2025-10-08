@@ -61,7 +61,14 @@ M.cwd = function()
 end
 
 M.cursor = function()
-  return gen_block("", "%l:%v", "%#St_Pos_sep#", "%#St_Pos_bg#", "%#St_Pos_txt#")
+  return gen_block("", "%l:%v", "%#St_Pos_sep#", "%#St_Pos_bg#", "%#St_Pos_txt#")
+end
+
+M.rbg_status = function()
+  local process_name = vim.g.rbg_process_name or "remedybg.exe"
+  local is_running = utils.process_running(process_name)
+  local status_text = "RBG Status :: " .. (is_running and "True" or "False")
+  return gen_block("", status_text, "%#St_Lsp_sep#", "%#St_Lsp_bg#", "%#St_Lsp_txt#")
 end
 
 M["%="] = "%="

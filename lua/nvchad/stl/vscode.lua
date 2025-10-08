@@ -32,6 +32,12 @@ M.cwd = function()
   return (vim.o.columns > 85 and name) or ""
 end
 
+M.rbg_status = function()
+  local process_name = vim.g.rbg_process_name or "remedybg.exe"
+  local is_running = utils.process_running(process_name)
+  return "%#St_Lsp#RBG Status :: " .. (is_running and "True" or "False") .. " "
+end
+
 return function()
   return utils.generate("vscode", M)
 end
